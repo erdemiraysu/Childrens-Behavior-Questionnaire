@@ -94,8 +94,6 @@ summary_cbq$talkergroup <- factor(summary_cbq$talkergroup, levels = c(0, 1), lab
 
 # BAR PLOTS
 ```{r}
-library(ggplot2)
-library(gridExtra)
 
 # List of variables
 variables <- c("age", "activity_level", "anger_frustration", "approach", "attention_focus", "attention_shift", 
@@ -116,13 +114,9 @@ create_bar_plot <- function(var, summary_cbq) {
     theme(plot.title = element_text(size = 20), 
           axis.title = element_text(size = 16), 
           axis.text = element_text(size = 14)) +
-    guides(fill = "none") +  # Remove legend
-
-# Adjust y-axis limits for specific variables
-# use `coord_cartesian(ylim = c(3, 6))` instead of `scale_y_continuous(limits = c(3, 6))` to get the blue bars plotted correctly. 
-# `coord_cartesian()` only affects the visible area of the plot and does not remove any data points, 
-# while `scale_y_continuous()` removes data points outside the limits from the plot altogether.
-
+    guides(fill = "none")   # Remove legends
+    
+  # Apply ylim settings based on condition
   if (var == "age") {
     plot <- plot + coord_cartesian(ylim = c(40, 60))
   } else {
@@ -131,6 +125,12 @@ create_bar_plot <- function(var, summary_cbq) {
   
   return(plot)
 }
+
+# Adjust y-axis limits for specific variables
+# use `coord_cartesian(ylim = c(3, 6))` instead of `scale_y_continuous(limits = c(3, 6))` to get the blue bars plotted correctly. 
+# `coord_cartesian()` only affects the visible area of the plot and does not remove any data points, 
+# while `scale_y_continuous()` removes data points outside the limits from the plot altogether.
+  
 
 # Create plots for each variable
 plots_list <- lapply(variables, create_bar_plot, summary_cbq)
@@ -149,6 +149,7 @@ ggsave("/Users/aysuerdemir/Desktop/CBQ_EDA/cbq_plot.pdf", plot = cbq_plot, width
 ```
 
 # HISTOGRAMS
+# All variables except age seem to be normally distributed. 
 ```{r}
 # List of variables
 variables <- c("age",  "activity_level", "anger_frustration", "approach", "attention_focus", "attention_shift", 
@@ -165,7 +166,6 @@ for (variable in variables) {
 }
 
 ```
-
 
 # T Tests for each one of these variables:
 ```{r}
