@@ -22,6 +22,8 @@ library(tidyr)
 library(stringr)
 library(ggplot2)
 library(gridExtra) # for multiple bar graphs in a grid
+library(effectsize) # for calculating cohen's d
+library(lsr) # for calculating partial eta squared
 ```
 
 # Specify Main folder path
@@ -171,9 +173,24 @@ for (variable in variables) {
 
 ```
 
-
-# T Tests for each one of these variables:
+# Chi-Square test for gender:
 ```{r}
+# Create a contingency table with the gender distribution by talkergroup
+cont_table <- table(CBQ_scored$gender, CBQ_scored$talkergroup)
+# Perform the chi-square test.
+chisq_test <- chisq.test(cont_table)
+print(chisq_test)
+
+```
+
+# T Tests for each one of dependent variables:
+```{r}
+
+# List of variables
+variables <- c("age", "activity_level", "anger_frustration", "approach", "attentional_focusing", "attentional_shifting", 
+               "discomfort", "soothability", "fear", "high_intensity_pleasure", "impulsivity", "inhibitory_control", 
+               "low_instensity_pleasure", "perceptual_sensitivity", "sadness", "shyness", "smiling_laughter", "surgency", 
+               "effortful_control", "neg_affect")
 
 # Empty list to store results
 results <- list()
@@ -181,28 +198,96 @@ results <- list()
 # Loop through each variable
 for (variable in variables) {
   # Perform t-test
-  t_test_result <- t.test(CBQ_scored[CBQ_scored$talkergroup == 0, variable], 
+  ttest_result <- t.test(CBQ_scored[CBQ_scored$talkergroup == 0, variable], 
                           CBQ_scored[CBQ_scored$talkergroup == 1, variable])
   
+  # Calculate Cohen's d
+  # Using as.formula(paste()) ensures that the formula is dynamically generated based on the current variable in the loop, 
+  # which can help avoid potential issues related to formula specification.
+  # This approach creates conflict: cohen_d <- as.data.frame(cohens_d(variable ~ talkergroup, data = CBQ_scored))
+  cohen_d <- cohens_d(as.formula(paste(variable, "~ talkergroup")), data = CBQ_scored)
+  
   # Store results
-  results[[variable]] <- c(CWNS_mean_group = mean(t_test_result$estimate[1]),
-                           CWS_mean_group = mean(t_test_result$estimate[2]),
-                           t_value = t_test_result$statistic,
-                           p_value = t_test_result$p.value)
+  results[[variable]] <- c(CWNS_mean_group = round(mean(ttest_result$estimate[1]),4),
+                           CWS_mean_group = round(mean(ttest_result$estimate[2]),4),
+                           t_value = round(ttest_result$statistic,4),
+                           p_value = round(ttest_result$p.value,4),
+                           effect_size_cohen_d = round(cohen_d$Cohens_d[1],4))
 }
 
-
 # Convert the table to a data frame
-table_results_df <- as.data.frame(results)
+# ttest_results <- as.data.frame(results)
+
+# Convert the list to a data frame, with each variable represented as rows
+ttest_results <- as.data.frame(do.call(rbind, results))
 
 # Print the table
-print(table_results_df)
+print(ttest_results)
 
 # Save the results in the current working directory
-write.csv(table_results_df, "./table_results_df.csv", row.names = TRUE)
+write.csv(ttest_results, "./ttest_results.csv", row.names = TRUE)
 
 ```
 
 
+```{r}
 
+```
+
+# ANCOVAS BECAUSE AGE AND GENDER NEED TO BE USED AS COVARIATES
+# formula: aov(outcome ~ group + cov1 + cov2, data = data)
+```{r}
+
+# List of variables
+variables <- c("activity_level", "anger_frustration", "approach", "attentional_focusing", "attentional_shifting", 
+               "discomfort", "soothability", "fear", "high_intensity_pleasure", "impulsivity", "inhibitory_control", 
+               "low_instensity_pleasure", "perceptual_sensitivity", "sadness", "shyness", "smiling_laughter", "surgency", 
+               "effortful_control", "neg_affect")
+
+# Empty list to store results
+results <- list()
+
+# Loop through each variable
+for (variable in variables) {
+  # Define the formula for ANCOVA
+  formula <- as.formula(paste(variable, "~ talkergroup + gender + age"))
+  # Perform ANCOVA
+  ancova_model <- aov(formula, data = CBQ_scored)
+  # ANCOVA result
+  ancova_result <- summary(ancova_model)
+  
+  # Calculate partial eta squared for talkergroup
+  part_eta_squared_tg <- as.data.frame(etaSquared(ancova_model))
+
+  # Store results
+  results[[variable]] <- c(F_talkergroup = round(ancova_result[[1]]["talkergroup", "F value"],4) ,
+                           p_talkergroup = round(ancova_result[[1]]["talkergroup", "Pr(>F)"],4) ,
+                           part_eta_effect_size_talkergroup = round(part_eta_squared_tg$`eta.sq.part`[1],4) ,
+                           F_gender = round(ancova_result[[1]]["gender", "F value"],4) ,
+                           p_gender = round(ancova_result[[1]]["gender", "Pr(>F)"],4) ,
+                           F_age = round(ancova_result[[1]]["age", "F value"],4) ,
+                           p_age = round(ancova_result[[1]]["age", "Pr(>F)"],4))
+}
+
+# Convert the list to a data frame with each dependent in different rows 
+ancova_results <- as.data.frame(do.call(rbind, results))
+
+# Print the table
+print(ancova_results)
+
+# Save the results in the current working directory
+write.csv(ancova_results, "./ancova_results.csv", row.names = TRUE)
+
+```
+
+```{r}
+
+# Perform ANCOVA for effortful_control using gender as covariate
+model <- aov(effortful_control ~ talkergroup + gender , data = CBQ_scored)
+ancova_result <- summary(model)
+part_eta_squared_tg <- as.data.frame(etaSquared(model))
+
+print(ancova_result)
+print(part_eta_squared_tg)
+```
 
